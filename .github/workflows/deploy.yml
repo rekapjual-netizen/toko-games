@@ -15,7 +15,7 @@ jobs:
       - name: Decode env from secret
         run: echo "${{ secrets.FIREBASE_ENV_BASE64 }}" | base64 -d > .env
         
-      - run: npm ci
+      - run: npm install
       
       - run: npm run build
       
