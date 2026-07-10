@@ -1,28 +1,27 @@
-name: Deploy to Netlify
+name: Build and Upload Dist
 on:
   push:
     branches: [ main ]
 jobs:
-  deploy:
+  build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: 20
+          
+      - name: Decode env from secret
+        run: echo "${{ secrets.FIREBASE_ENV_BASE64 }}" | base64 -d > .env
+        
+      - run: npm ci
       
-      - name: Install dependencies
-        run: npm install --no-package-lock
+      - run: npm run build
       
-      - name: Build
-        run: npm run build
-      
-      - name: Deploy to Netlify
-        uses: nwtgck/actions-netlify@v3.0
+      - name: Upload dist as artifact
+        uses: actions/upload-artifact@v4
         with:
-          publish-dir: './dist'
-          production-branch: main
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          netlify-auth-token: ${{ secrets.NETLIFY_AUTH_TOKEN }}
-          netlify-site-id: ${{ secrets.NETLIFY_SITE_ID }}
+          name: dist
+          path: dist/
+          retention-days: 7
