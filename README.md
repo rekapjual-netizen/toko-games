@@ -1,34 +1,85 @@
-# PWA Kasir — Toko Game QRIS
+# GTH Store — Toko (PWA Pembeli)
 
-App publik untuk pelanggan: lihat produk, checkout, bayar via QRIS.
-Order yang dibuat di sini tersimpan di Firestore project **toko-qris**
-dan otomatis muncul di app Admin (project terpisah).
+Aplikasi toko untuk pembeli. **Hanya membaca (read-only)** data dari Firestore — tidak ada fitur login, tambah, atau hapus data di project ini. Semua pengelolaan data (produk, banner, dll) dilakukan lewat project `gthstore-admin`.
 
 ## Fitur
-- Lihat daftar & detail produk (top up, voucher, pulsa)
-- Checkout & tampilkan QRIS untuk dibayar
-- Konfirmasi pembayaran via WhatsApp
-- Simpan order ke Firebase Firestore
+- Banner promo (dibaca dari Firestore, dikelola via Admin)
+- List produk + kategori + pencarian
+- Detail produk + galeri hingga 5 foto
+- Checkout via WhatsApp (tidak menyimpan data apa pun ke database)
+- PWA (bisa di-install di HP)
 
-**Tidak ada** fitur admin/login di project ini.
+## Cara Menjalankan
 
-## Setup
+1. **Isi konfigurasi Firebase**
 
-1. `npm install`
-2. Salin `.env.example` jadi `.env`, isi dengan config Firebase project **toko-qris**
-   (Firebase Console > Project Settings > General > Your apps > Web app > SDK config).
-3. `npm run dev` untuk coba lokal.
+   Buka `src/firebase.js`, tempel `firebaseConfig` dari Firebase Console project kamu (harus **project yang sama** dengan yang dipakai di `gthstore-admin`):
 
-## Deploy ke Netlify
+   ```js
+   const firebaseConfig = {
+     apiKey: "...",
+     authDomain: "...",
+     projectId: "...",
+     storageBucket: "...",
+     messagingSenderId: "...",
+     appId: "..."
+   };
+   ```
 
-1. Push folder ini ke repo Git (terpisah dari project Admin), atau drag-drop folder ke Netlify.
-2. Build command: `npm run build`, publish directory: `dist` (sudah diatur di `netlify.toml`).
-3. Di Netlify: **Site settings > Environment variables**, tambahkan semua variabel
-   dari `.env.example` dengan nilai project `toko-qris`.
-4. Deploy.
+2. **Install dependency**
 
-## Firestore Rules
+   ```bash
+   npm i
+   ```
 
-Pastikan rules di `../firestore.rules` (satu folder di atas, dipakai bareng
-dengan project Admin) sudah diterapkan di Firebase Console > Firestore Database > Rules,
-supaya harga produk & data QRIS tidak bisa diubah orang selain admin.
+3. **Jalankan development server**
+
+   ```bash
+   npm run dev
+   ```
+
+   Buka `http://localhost:5173`
+
+4. **Build untuk production**
+
+   ```bash
+   npm run build
+   ```
+
+   Hasil build ada di folder `dist/`, siap di-deploy ke Netlify/Vercel/Firebase Hosting.
+
+## Struktur Data Firestore yang Dibaca
+
+- `products` (koleksi): `nama_game`, `kategori`, `url_gambar`, `nominal_list` (array {nama, harga}), `images` (array URL, maks 5), `is_popular`, `popular_rank`
+- `banners` (koleksi): `url_gambar`, `order`
+- `categories` (koleksi): `name`
+- `settings/qris` (dokumen): `wa_number`, `url_gambar_qris`
+- `settings/tampilan` (dokumen): `name`, `slogan`, `logo_url`, `primary_color`, `description`
+
+## Catatan Keamanan (Firestore Rules)
+
+Karena project ini read-only, pastikan Firestore Security Rules kamu hanya mengizinkan **read** untuk collection publik di atas, dan **write** hanya untuk user yang sudah login (lewat project Admin). Contoh:
+
+```
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /products/{doc} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+    match /banners/{doc} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+    match /categories/{doc} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+    match /settings/{doc} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+  }
+}
+```
